@@ -234,12 +234,15 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
     if (outputFormat === "pdf") {
       const pdfDoc = await PDFDocument.create();
       pdfDoc.registerFontkit(fontkit);
-      
+
       // Fetch a font that supports CJK characters (Noto Sans SC)
-      const fontUrl = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf';
+      const fontUrl = 'https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf';
       let fontBytes;
       try {
         const fontRes = await fetch(fontUrl);
+        if (!fontRes.ok) {
+          throw new Error(`Failed to fetch font: ${fontRes.status} ${fontRes.statusText}`);
+        }
         fontBytes = await fontRes.arrayBuffer();
       } catch (e) {
         console.error("Failed to fetch CJK font, falling back to basic font", e);
@@ -247,11 +250,11 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
       }
 
       const customFont = await pdfDoc.embedFont(fontBytes);
-      
+
       let page = pdfDoc.addPage();
       const { width, height } = page.getSize();
       const fontSize = 12;
-      
+
       // Basic text wrapping for PDF (very simple implementation)
       const lines = (finalContent as string).split("\n");
       let y = height - 50;
@@ -293,8 +296,8 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
     res.json({ success: true, path: folderPath.join("/") + "/" + fileName });
   } catch (error: any) {
     console.error("Merge error:", error);
-    res.status(500).json({ 
-      error: "Failed to merge and upload files.", 
+    res.status(500).json({
+      error: "Failed to merge and upload files.",
       details: error.message || String(error)
     });
   }
