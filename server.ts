@@ -8,7 +8,8 @@ import path from "path";
 import fs from "fs";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -232,7 +233,21 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
     let media: any;
     if (outputFormat === "pdf") {
       const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      pdfDoc.registerFontkit(fontkit);
+      
+      // Fetch a font that supports CJK characters (Noto Sans SC)
+      const fontUrl = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf';
+      let fontBytes;
+      try {
+        const fontRes = await fetch(fontUrl);
+        fontBytes = await fontRes.arrayBuffer();
+      } catch (e) {
+        console.error("Failed to fetch CJK font, falling back to basic font", e);
+        throw new Error("Failed to load CJK font for PDF generation.");
+      }
+
+      const customFont = await pdfDoc.embedFont(fontBytes);
+      
       let page = pdfDoc.addPage();
       const { width, height } = page.getSize();
       const fontSize = 12;
@@ -245,7 +260,7 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
           page = pdfDoc.addPage();
           y = height - 50;
         }
-        page.drawText(line.substring(0, 80), { x: 50, y, size: fontSize, font });
+        page.drawText(line.substring(0, 80), { x: 50, y, size: fontSize, font: customFont });
         y -= fontSize + 2;
       }
       const pdfBytes = await pdfDoc.save();
@@ -276,9 +291,12 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
     }
 
     res.json({ success: true, path: folderPath.join("/") + "/" + fileName });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Merge error:", error);
-    res.status(500).json({ error: "Failed to merge and upload files." });
+    res.status(500).json({ 
+      error: "Failed to merge and upload files.", 
+      details: error.message || String(error)
+    });
   }
 });
 

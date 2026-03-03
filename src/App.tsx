@@ -19,7 +19,7 @@ export default function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [outputFormat, setOutputFormat] = useState<"txt" | "pdf">("txt");
   const [isUploading, setIsUploading] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [status, setStatus] = useState<{ type: "success" | "error"; message: string; details?: string } | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
@@ -104,10 +104,18 @@ export default function App() {
         setStatus({ type: "success", message: `Successfully merged and saved to: ${data.path}` });
         setFiles([]);
       } else {
-        setStatus({ type: "error", message: data.error || "Failed to merge files." });
+        setStatus({ 
+          type: "error", 
+          message: data.error || "Failed to merge files.",
+          details: data.details
+        });
       }
-    } catch (err) {
-      setStatus({ type: "error", message: "An unexpected error occurred." });
+    } catch (err: any) {
+      setStatus({ 
+        type: "error", 
+        message: "An unexpected error occurred.",
+        details: err.message || String(err)
+      });
     } finally {
       setIsUploading(false);
     }
@@ -318,8 +326,15 @@ export default function App() {
                         : "bg-red-50 text-red-700 border border-red-100"
                     }`}
                   >
-                    {status.type === "success" ? <CheckCircle size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
-                    <p className="text-sm font-medium leading-tight">{status.message}</p>
+                    {status.type === "success" ? <CheckCircle size={18} className="shrink-0 mt-0.5" /> : <AlertCircle size={18} className="shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium leading-tight">{status.message}</p>
+                      {status.details && (
+                        <div className="mt-2 p-2 bg-white/50 rounded-lg border border-red-200/50">
+                          <p className="text-xs font-mono break-all text-red-800/80">{status.details}</p>
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
