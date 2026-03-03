@@ -208,7 +208,7 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
     // 3. Initialize Master PDF
     const masterPdf = await PDFDocument.create();
     masterPdf.registerFontkit(fontkit);
-    
+
     // Fetch a font that supports CJK characters (Noto Sans SC)
     const fontUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf';
     let fontBytes;
@@ -267,16 +267,19 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
 
     // 5. Process Uploaded Files
     let totalTextLength = 0;
+    const skippedFiles: string[] = [];
+
     for (const file of files) {
       if (file.mimetype === "application/pdf") {
         try {
           const pdfBytes = fs.readFileSync(file.path);
-          const pdf = await PDFDocument.load(pdfBytes);
+          const pdf = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
           const copiedPages = await masterPdf.copyPages(pdf, pdf.getPageIndices());
           copiedPages.forEach((page) => masterPdf.addPage(page));
         } catch (e) {
           console.error("Failed to append PDF file", e);
-          throw new Error(`Failed to process PDF file: ${file.originalname}`);
+          skippedFiles.push(file.originalname);
+          addTextToPdf(masterPdf, `\n\n[Warning: Skipped encrypted or password-protected PDF file: ${file.originalname}]\n\n`, customFont);
         }
       } else {
         let text = "";
@@ -288,7 +291,7 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
         }
         totalTextLength += text.length;
         if (totalTextLength > 500000) {
-           throw new Error("Total character count for text files exceeds 500,000 limit.");
+          throw new Error("Total character count for text files exceeds 500,000 limit.");
         }
         addTextToPdf(masterPdf, text, customFont);
       }
@@ -318,11 +321,11 @@ app.post("/api/merge", upload.array("files"), async (req, res) => {
       });
     }
 
-    res.json({ success: true, path: folderPath.join("/") + "/" + fileName });
+    res.json({ success: true, path: folderPath.join("/") + "/" + fileName, skippedFiles });
   } catch (error: any) {
     console.error("Merge error:", error);
-    res.status(500).json({ 
-      error: "Failed to merge and upload files.", 
+    res.status(500).json({
+      error: "Failed to merge and upload files.",
       details: error.message || String(error)
     });
   }

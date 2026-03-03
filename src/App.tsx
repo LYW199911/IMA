@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { 
-  Upload, 
-  FileText, 
-  CheckCircle, 
-  AlertCircle, 
-  Loader2, 
-  Plus, 
-  X, 
+import {
+  Upload,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Plus,
+  X,
   FileUp,
   Settings2,
   ExternalLink,
@@ -30,7 +30,7 @@ export default function App() {
       }
     };
     window.addEventListener("storage", handleStorage);
-    
+
     // Also keep message listener as fallback
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "OAUTH_AUTH_SUCCESS") {
@@ -38,7 +38,7 @@ export default function App() {
       }
     };
     window.addEventListener("message", handleMessage);
-    
+
     return () => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("message", handleMessage);
@@ -116,18 +116,22 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        setStatus({ type: "success", message: `Successfully merged and saved to: ${data.path}` });
+        let message = `Successfully merged and saved to: ${data.path}`;
+        if (data.skippedFiles && data.skippedFiles.length > 0) {
+          message += ` (Skipped password-protected files: ${data.skippedFiles.join(', ')})`;
+        }
+        setStatus({ type: data.skippedFiles?.length ? "error" : "success", message });
         setFiles([]);
       } else {
-        setStatus({ 
-          type: "error", 
+        setStatus({
+          type: "error",
           message: data.error || "Failed to merge files.",
           details: data.details
         });
       }
     } catch (err: any) {
-      setStatus({ 
-        type: "error", 
+      setStatus({
+        type: "error",
         message: "An unexpected error occurred.",
         details: err.message || String(err)
       });
@@ -148,7 +152,7 @@ export default function App() {
     <div className="min-h-screen bg-[#FDFCFB] text-stone-900 font-sans selection:bg-stone-200">
       <header className="max-w-4xl mx-auto pt-20 pb-12 px-6">
         <div className="flex items-center justify-between mb-2">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-3"
@@ -172,7 +176,7 @@ export default function App() {
 
       <main className="max-w-4xl mx-auto px-6 pb-24">
         {!isAuthenticated ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white border border-stone-200 rounded-3xl p-12 text-center shadow-sm"
@@ -184,7 +188,7 @@ export default function App() {
             <p className="text-stone-500 mb-8 max-w-sm mx-auto">
               We need access to your Google Drive to create folders and save your merged files.
             </p>
-            <button 
+            <button
               onClick={handleConnect}
               className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition-colors inline-flex items-center gap-2"
             >
@@ -196,18 +200,17 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-6">
               {/* Upload Area */}
-              <div 
+              <div
                 onDragEnter={onDrag}
                 onDragLeave={onDrag}
                 onDragOver={onDrag}
                 onDrop={onDrop}
-                className={`relative border-2 border-dashed rounded-3xl p-12 transition-all duration-300 flex flex-col items-center justify-center gap-4 ${
-                  dragActive ? "border-stone-900 bg-stone-50" : "border-stone-200 bg-white"
-                }`}
+                className={`relative border-2 border-dashed rounded-3xl p-12 transition-all duration-300 flex flex-col items-center justify-center gap-4 ${dragActive ? "border-stone-900 bg-stone-50" : "border-stone-200 bg-white"
+                  }`}
               >
-                <input 
-                  type="file" 
-                  multiple 
+                <input
+                  type="file"
+                  multiple
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   accept=".pdf,.docx,.txt"
@@ -224,7 +227,7 @@ export default function App() {
               {/* File List */}
               <AnimatePresence mode="popLayout">
                 {files.length > 0 && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -232,7 +235,7 @@ export default function App() {
                   >
                     <div className="flex items-center justify-between px-2">
                       <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest">Files to Merge</h3>
-                      <button 
+                      <button
                         onClick={() => setFiles([])}
                         className="text-xs text-stone-400 hover:text-stone-900"
                       >
@@ -241,7 +244,7 @@ export default function App() {
                     </div>
                     <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden divide-y divide-stone-100">
                       {files.map((file, idx) => (
-                        <motion.div 
+                        <motion.div
                           key={`${file.name}-${idx}`}
                           layout
                           initial={{ opacity: 0 }}
@@ -256,7 +259,7 @@ export default function App() {
                               <p className="text-xs text-stone-400">{(file.size / 1024).toFixed(1)} KB</p>
                             </div>
                           </div>
-                          <button 
+                          <button
                             onClick={() => removeFile(idx)}
                             className="p-2 text-stone-300 hover:text-red-500 transition-colors"
                           >
@@ -274,7 +277,7 @@ export default function App() {
               {/* Settings */}
               <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-6">Settings</h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-medium text-stone-500 mb-2 block">Output Format</label>
@@ -287,14 +290,13 @@ export default function App() {
                   </div>
 
                   <div className="pt-4">
-                    <button 
+                    <button
                       onClick={handleMerge}
                       disabled={files.length === 0 || isUploading}
-                      className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                        files.length === 0 || isUploading
+                      className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all ${files.length === 0 || isUploading
                           ? "bg-stone-100 text-stone-400 cursor-not-allowed"
                           : "bg-stone-900 text-white hover:bg-stone-800 shadow-lg active:scale-[0.98]"
-                      }`}
+                        }`}
                     >
                       {isUploading ? (
                         <>
@@ -315,15 +317,14 @@ export default function App() {
               {/* Status Messages */}
               <AnimatePresence>
                 {status && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className={`p-4 rounded-2xl flex gap-3 ${
-                      status.type === "success" 
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+                    className={`p-4 rounded-2xl flex gap-3 ${status.type === "success"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                         : "bg-red-50 text-red-700 border border-red-100"
-                    }`}
+                      }`}
                   >
                     {status.type === "success" ? <CheckCircle size={18} className="shrink-0 mt-0.5" /> : <AlertCircle size={18} className="shrink-0 mt-0.5" />}
                     <div className="flex-1">
@@ -345,7 +346,7 @@ export default function App() {
                   <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest">Automation</h4>
                 </div>
                 <p className="text-xs text-stone-500 leading-relaxed">
-                  Files are automatically saved to <code className="bg-stone-200 px-1 rounded">IMA/YYYY/MM/DD</code>. 
+                  Files are automatically saved to <code className="bg-stone-200 px-1 rounded">IMA/YYYY/MM/DD</code>.
                   If a file exists for today, new content will be appended.
                 </p>
               </div>
