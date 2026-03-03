@@ -17,20 +17,32 @@ import { motion, AnimatePresence } from "motion/react";
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [outputFormat, setOutputFormat] = useState<"txt" | "pdf">("txt");
   const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string; details?: string } | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     checkAuth();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "oauth_success" && event.newValue === "true") {
+        setIsAuthenticated(true);
+        localStorage.removeItem("oauth_success");
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    
+    // Also keep message listener as fallback
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "OAUTH_AUTH_SUCCESS") {
         setIsAuthenticated(true);
       }
     };
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("message", handleMessage);
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -48,7 +60,11 @@ export default function App() {
     try {
       const res = await fetch("/api/auth/url");
       const { url } = await res.json();
-      window.open(url, "google_auth", "width=600,height=700");
+      // Use noopener to prevent cross-origin frame access errors from third-party scripts
+      const popup = window.open(url, "google_auth", "width=600,height=700");
+      if (!popup) {
+        alert("Please allow popups for this site to connect your account.");
+      }
     } catch (err) {
       console.error("Failed to get auth URL", err);
     }
@@ -92,7 +108,6 @@ export default function App() {
 
     const formData = new FormData();
     files.forEach(file => formData.append("files", file));
-    formData.append("outputFormat", outputFormat);
 
     try {
       const res = await fetch("/api/merge", {
@@ -263,27 +278,11 @@ export default function App() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-medium text-stone-500 mb-2 block">Output Format</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => setOutputFormat("txt")}
-                        className={`py-2 px-4 rounded-xl text-sm font-medium transition-all ${
-                          outputFormat === "txt" 
-                            ? "bg-stone-900 text-white shadow-md" 
-                            : "bg-stone-50 text-stone-500 hover:bg-stone-100"
-                        }`}
-                      >
-                        TXT
-                      </button>
-                      <button 
-                        onClick={() => setOutputFormat("pdf")}
-                        className={`py-2 px-4 rounded-xl text-sm font-medium transition-all ${
-                          outputFormat === "pdf" 
-                            ? "bg-stone-900 text-white shadow-md" 
-                            : "bg-stone-50 text-stone-500 hover:bg-stone-100"
-                        }`}
-                      >
-                        PDF
-                      </button>
+                    <div className="bg-stone-50 border border-stone-100 rounded-xl p-4">
+                      <p className="text-sm text-stone-700 font-medium">PDF Document</p>
+                      <p className="text-xs text-stone-500 mt-1">
+                        All files will be merged into a single PDF. Existing PDFs are appended directly, while text and DOCX files are converted automatically.
+                      </p>
                     </div>
                   </div>
 
